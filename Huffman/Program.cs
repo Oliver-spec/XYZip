@@ -60,36 +60,37 @@ public static class Program
     {
       Console.WriteLine($"\nCompressed Size: {fs.Length} Byte(s)");
 
-      while (true)
+      for (long i = 0; i < fs.Length; i++)
       {
-        int byteReadAsInt = fs.ReadByte();
+        int byteRead = fs.ReadByte();
 
-        if (byteReadAsInt == -1)
+        if (i > 255)
         {
-          break;
+          Console.WriteLine(Convert.ToString(byteRead, 2).PadLeft(8, '0'));
         }
-
-        byte byteRead = (byte)byteReadAsInt;
-
-        // debug
-        Console.WriteLine(Convert.ToString(byteRead, 2).PadLeft(8, '0'));
-
-        queue.CountFrequency(byteRead);
       }
     }
 
-    // Console.WriteLine("\nString Output:");
-    // Console.WriteLine(encoder.StringOutput);
+    Decoder decoder = new Decoder();
+    decoder.Decode("compressed.xyz");
 
-    // Decoder decoder = new(encoder.StringOutput);
+    // debug
+    Console.WriteLine("\nDecoded Header: Value - Length");
+    foreach (Tuple<byte, int> tuple in decoder.CodesLengthList)
+    {
+      Console.WriteLine($"Character Value: {tuple.Item1} Code Length: {tuple.Item2}");
+    }
 
-    // Console.WriteLine("\nDecoded Canonical Codes:");
-    // foreach (KeyValuePair<string, string> entry in decoder.CodesDict)
-    // {
-    //   Console.WriteLine($"{entry.Key}\t{entry.Value}");
-    // }
+    Console.WriteLine("\nDecoded Header: Value - Code");
+    foreach (Tuple<byte, string> tuple in decoder.CodesList)
+    {
+      Console.WriteLine($"Character Value: {tuple.Item1} Code: {tuple.Item2}");
+    }
 
-    // Console.WriteLine("\nDecoded String Output:");
-    // Console.WriteLine(decoder.Output);
+    Console.WriteLine("\nDecoded Dict: Code - Value");
+    foreach (KeyValuePair<string, byte> tuple in decoder.CodesDict)
+    {
+      Console.WriteLine($"Code: {tuple.Key} Character Value: {tuple.Value}");
+    }
   }
 }

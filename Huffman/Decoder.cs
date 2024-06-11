@@ -2,65 +2,95 @@
 
 public class Decoder
 {
-  private int HeaderLength { get; }
-  private string Input { get; }
-  public string Output { get; set; } = "";
-  private List<Tuple<string, int>> CodeLength { get; } = [];
-  private List<Tuple<string, string>> Codes { get; } = [];
-  public Dictionary<string, string> CodesDict { get; } = [];
+  public List<Tuple<byte, int>> CodesLengthList { get; } = [];
+  public List<Tuple<byte, string>> CodesList { get; } = [];
+  public Dictionary<string, byte> CodesDict { get; } = [];
 
-  public Decoder(string input)
+  private int Compare(Tuple<byte, int> x, Tuple<byte, int> y)
   {
-    Input = input;
-    HeaderLength = int.Parse(Input[0].ToString());
-    ProcessInput();
-    Decode();
-    GenerateOutput();
-  }
+    int comparisonResult = x.Item2.CompareTo(y.Item2);
 
-  private void ProcessInput()
-  {
-    // int headerLength = 0;
-    List<string> characterList = [];
-    List<int> codeLengthList = [];
-
-    for (int i = 0; i < Input.Length; i++)
+    if (comparisonResult == 0)
     {
-      if (i > 0 && i <= HeaderLength)
-      {
-        characterList.Add(Input[i].ToString());
-      }
-      else if (i > HeaderLength && i <= HeaderLength * 2)
-      {
-        codeLengthList.Add(int.Parse(Input[i].ToString()));
-      }
+      return x.Item1.CompareTo(y.Item1);
     }
-
-    for (int i = 0; i < characterList.Count; i++)
+    else
     {
-      Tuple<string, int> tuple = new(characterList[i], codeLengthList[i]);
-      CodeLength.Add(tuple);
+      return comparisonResult;
     }
   }
-  private void Decode()
+  public void Decode(string path)
   {
-    for (int i = 0; i < CodeLength.Count; i++)
+    using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
+    {
+      for (int i = 0; i < 256; i++)
+      {
+        byte codeLength = (byte)fileToRead.ReadByte();
+
+        if (codeLength == 0)
+        {
+          continue;
+        }
+
+        CodesLengthList.Add(new Tuple<byte, int>((byte)i, codeLength));
+      }
+
+      CodesLengthList.Sort(Compare);
+      GetCodesDict();
+
+      string possibleCode = "";
+
+      for (long i = 256; i < fileToRead.Length - 2; i++)
+      {
+        string readingFrame = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
+
+        foreach (char bit in readingFrame)
+        {
+          possibleCode += bit;
+
+          if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
+          {
+            // debug
+            Console.WriteLine((char)actualValue);
+            possibleCode = "";
+          }
+        }
+      }
+
+      string secondLastByte = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
+      int lastByte = fileToRead.ReadByte();
+      string usefulBits = secondLastByte.Substring(0, lastByte);
+
+      foreach (char bit in usefulBits)
+      {
+        possibleCode += bit;
+
+        if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
+        {
+          // debug
+          Console.WriteLine((char)actualValue);
+          possibleCode = "";
+        }
+      }
+    }
+  }
+  private void GetCodesDict()
+  {
+    for (int i = 0; i < CodesLengthList.Count; i++)
     {
       if (i == 0)
       {
-        Tuple<string, string> tuple = new(new string('0', CodeLength[i].Item2), CodeLength[i].Item1);
-        Codes.Add(tuple);
-        // CanonicalCodesDict.Add(tuple.Item1, new Tuple<string, int>(tuple.Item2, tuple.Item2.Length));
+        Tuple<byte, string> tuple = new Tuple<byte, string>(CodesLengthList[i].Item1, new string('0', CodesLengthList[i].Item2));
+        CodesList.Add(tuple);
       }
       else
       {
         string newCode = "";
 
-        string previouscode = Codes[i - 1].Item1;
-        // string currentCode = CodeLength[i].Item1;
+        string previouscode = CodesList[i - 1].Item2;
 
-        int previousLength = CodeLength[i - 1].Item2;
-        int currentLength = CodeLength[i].Item2;
+        int previousLength = CodesLengthList[i - 1].Item2;
+        int currentLength = CodesLengthList[i].Item2;
 
         if (currentLength == previousLength)
         {
@@ -73,32 +103,14 @@ public class Decoder
           newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(previousLength, '0').PadRight(currentLength, '0');
         }
 
-        Tuple<string, string> tuple = new(newCode, CodeLength[i].Item1);
-        Codes.Add(tuple);
-        // CanonicalCodesDict.Add(tuple.Item1, new Tuple<string, int>(tuple.Item2, tuple.Item2.Length));
+        Tuple<byte, string> tuple = new(CodesLengthList[i].Item1, newCode);
+        CodesList.Add(tuple);
       }
     }
 
-    foreach (Tuple<string, string> tuple in Codes)
+    foreach (Tuple<byte, string> tuple in CodesList)
     {
-      CodesDict.Add(tuple.Item1, tuple.Item2);
+      CodesDict.Add(tuple.Item2, tuple.Item1);
     }
-  }
-  private void GenerateOutput()
-  {
-    string output = "";
-    string currentString = "";
-
-    for (int i = HeaderLength * 2 + 1; i < Input.Length; i++)
-    {
-      currentString += Input[i].ToString();
-      if (CodesDict.TryGetValue(currentString, out string? addToOutput))
-      {
-        output += addToOutput;
-        currentString = "";
-      }
-    }
-
-    Output = output;
   }
 }

@@ -32,19 +32,6 @@ public class Encoder
         fileToWrite.WriteByte(0);
       }
     }
-    // byte uniqueByteCount = (byte)CanonicalCodesDict.Count;
-    // fileToWrite.WriteByte(uniqueByteCount);
-
-    // foreach (Tuple<byte, string> tuple in CanonicalCodes)
-    // {
-    //   fileToWrite.WriteByte(tuple.Item1);
-    // }
-
-    // foreach (Tuple<byte, string> tuple in CanonicalCodes)
-    // {
-    //   byte codeLength = (byte)CanonicalCodesDict[tuple.Item1].Item2;
-    //   fileToWrite.WriteByte(codeLength);
-    // }
   }
   public void Encode(Node? currentNode, string code)
   {
@@ -121,17 +108,10 @@ public class Encoder
 
       while (filesize > 0)
       {
-        // debug
-        // Console.WriteLine("Excess code from last iteration: " + excessCode);
-
         byte byteRead = Convert.ToByte(fileToRead.ReadByte());
         filesize--;
 
         string code = excessCode + CanonicalCodesDict[byteRead].Item1;
-
-        // debug
-        // Console.WriteLine("Code from this iteration: " + code);
-
         excessCode = "";
 
         if (currentByteToWrite.Length + code.Length <= 8)
@@ -144,9 +124,6 @@ public class Encoder
           currentByteToWrite += code.Substring(0, lengthToWrite);
           excessCode = code.Substring(lengthToWrite);
         }
-
-        // debug
-        // Console.WriteLine("Byte to write in this iteration: " + currentByteToWrite);
 
         if (currentByteToWrite.Length == 8)
         {
@@ -163,20 +140,10 @@ public class Encoder
         {
           fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.PadRight(8, '0'), 2));
           fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.Length));
-
-          // if (excessCode.Length == 0)
-          // {
-          //   // debug
-          //   Console.WriteLine("Current byte length: " + currentByteToWrite.Length);
-          //   fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.Length));
-          // }
-
           currentByteToWrite = "";
         }
       }
 
-      // debug
-      // Console.WriteLine("Excess code after loop: " + excessCode);
       if (excessCode.Length > 0)
       {
         fileToWrite.WriteByte(Convert.ToByte(excessCode.PadRight(8, '0'), 2));
