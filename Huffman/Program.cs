@@ -55,6 +55,7 @@ public static class Program
       Console.WriteLine($"{tuple.Item1}\t{encoder.CanonicalCodesDict[tuple.Item1].Item2}\t{tuple.Item2}");
     }
 
+    // debug
     using (FileStream fs = new FileStream("compressed.xyz", FileMode.Open, FileAccess.Read))
     {
       Console.WriteLine($"\nCompressed Size: {fs.Length} Byte(s)");
@@ -69,6 +70,10 @@ public static class Program
         }
 
         byte byteRead = (byte)byteReadAsInt;
+
+        // debug
+        Console.WriteLine(Convert.ToString(byteRead, 2).PadLeft(8, '0'));
+
         queue.CountFrequency(byteRead);
       }
     }
