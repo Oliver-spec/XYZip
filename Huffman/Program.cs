@@ -2,50 +2,76 @@
 
 public static class Program
 {
-  private static void Main(string[] args)
+  private static void Main()
   {
-    if (args.Length == 0 || args.Length > 1)
+    bool validInput = false;
+    string? compressOrDecompress;
+    string? filePath;
+
+    do
     {
-      Console.WriteLine("Invalid File Path");
-      Environment.Exit(0);
-    }
+      Console.WriteLine("To Compress a File, Enter 0");
+      Console.WriteLine("To Decompress a File, Enter 1");
 
-    string path = args[0];
+      compressOrDecompress = Console.ReadLine();
 
-    if (!File.Exists(path))
-    {
-      Console.WriteLine("Invalid File Path");
-      Environment.Exit(0);
-    }
-
-    Queue queue = new Queue();
-
-    using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-    {
-      Console.WriteLine($"\nUncompressed Size: {fs.Length} Byte(s)");
-
-      while (true)
+      if (compressOrDecompress == "0" || compressOrDecompress == "1")
       {
-        int byteReadAsInt = fs.ReadByte();
-
-        if (byteReadAsInt == -1)
-        {
-          break;
-        }
-
-        byte byteRead = (byte)byteReadAsInt;
-        queue.CountFrequency(byteRead);
+        validInput = true;
       }
+
+    } while (validInput == false);
+
+    do
+    {
+      Console.WriteLine("Enter the File Path:");
+
+      filePath = Console.ReadLine();
+
+      if (filePath != null || File.Exists(filePath))
+      {
+        validInput = true;
+      }
+
+    } while (validInput == false);
+
+    if (compressOrDecompress == "0")
+    {
+      Queue queue = new Queue();
+
+      using (FileStream fs = new FileStream(filePath ?? throw new Exception("Invalid File Path"), FileMode.Open, FileAccess.Read))
+      {
+        Console.WriteLine($"Uncompressed Size: {fs.Length} Byte(s)");
+
+        while (true)
+        {
+          int byteReadAsInt = fs.ReadByte();
+
+          if (byteReadAsInt == -1)
+          {
+            break;
+          }
+
+          byte byteRead = (byte)byteReadAsInt;
+          queue.CountFrequency(byteRead);
+        }
+      }
+
+      queue.FinaliseQueue();
+
+      Tree tree = new Tree();
+      tree.GrowTree(queue);
+
+      Encoder encoder = new Encoder();
+      encoder.Encode(tree.Root, "");
+      encoder.CanonicalEncode();
+      encoder.GenerateCompressedFile(filePath);
     }
-
-    queue.FinaliseQueue();
-
-    Tree tree = new Tree();
-    tree.GrowTree(queue);
-
-    Encoder encoder = new Encoder();
-    encoder.Encode(tree.Root, "");
-    encoder.CanonicalEncode();
+    else
+    {
+      Decoder decoder = new Decoder();
+      decoder.Decode(filePath ?? throw new Exception("Invalid File Path"));
+    }
 
     // // debug
     // Console.WriteLine("\nCanonical Codes:");
@@ -53,10 +79,6 @@ public static class Program
     // {
     //   Console.WriteLine($"{tuple.Item1}\t{encoder.CanonicalCodesDict[tuple.Item1].Item2}\t{tuple.Item2}");
     // }
-
-    encoder.GenerateCompressedFile(path);
-
-
 
     // // debug
     // using (FileStream fs = new FileStream("compressed.xyz", FileMode.Open, FileAccess.Read))
@@ -73,9 +95,6 @@ public static class Program
     //     }
     //   }
     // }
-
-    Decoder decoder = new Decoder();
-    decoder.Decode("compressed.xyz");
 
     // // debug
     // Console.WriteLine("\nDecoded Header: Value - Length");

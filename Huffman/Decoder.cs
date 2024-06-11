@@ -60,8 +60,11 @@ public class Decoder
   }
   public void Decode(string path)
   {
+    string fileName = path.Split('.')[0];
+    string extension = path.Split('.')[1];
+
     using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
-    using (FileStream fileToWrite = File.Create("decompressed.txt"))
+    using (FileStream fileToWrite = File.Create($"{fileName}_decompressed.{extension}"))
     {
       for (int i = 0; i < 256; i++)
       {

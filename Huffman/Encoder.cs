@@ -3,8 +3,8 @@
 public class Encoder
 {
   private List<Tuple<byte, string>> Codes { get; } = [];
-  public List<Tuple<byte, string>> CanonicalCodes { get; } = [];
-  public Dictionary<byte, Tuple<string, int>> CanonicalCodesDict { get; } = [];
+  private List<Tuple<byte, string>> CanonicalCodes { get; } = [];
+  private Dictionary<byte, Tuple<string, int>> CanonicalCodesDict { get; } = [];
 
   private int Compare(Tuple<byte, string> x, Tuple<byte, string> y)
   {
@@ -97,8 +97,11 @@ public class Encoder
   }
   public void GenerateCompressedFile(string path)
   {
+    string fileName = path.Split('.')[0];
+    string extension = path.Split('.')[1];
+
     using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
-    using (FileStream fileToWrite = File.Create("compressed.xyz"))
+    using (FileStream fileToWrite = File.Create($"{fileName}.{extension}.xyz"))
     {
       WriteHeader(fileToWrite);
 
@@ -160,7 +163,7 @@ public class Encoder
         }
       }
 
-      Console.WriteLine($"\nCompressed File Size: {fileToWrite.Length} Byte(s)");
+      Console.WriteLine($"Compressed File Size: {fileToWrite.Length} Byte(s)");
     }
   }
 }
