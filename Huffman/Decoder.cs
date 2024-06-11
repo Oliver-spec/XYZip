@@ -2,9 +2,9 @@
 
 public class Decoder
 {
-  public List<Tuple<byte, int>> CodesLengthList { get; } = [];
-  public List<Tuple<byte, string>> CodesList { get; } = [];
-  public Dictionary<string, byte> CodesDict { get; } = [];
+  private List<Tuple<byte, int>> CodesLengthList { get; } = [];
+  private List<Tuple<byte, string>> CodesList { get; } = [];
+  private Dictionary<string, byte> CodesDict { get; } = [];
 
   private int Compare(Tuple<byte, int> x, Tuple<byte, int> y)
   {

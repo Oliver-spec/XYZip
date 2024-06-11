@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace Huffman;
+﻿namespace Huffman;
 
 public class Tree
 {
@@ -26,18 +24,5 @@ public class Tree
     }
 
     Root = QueueToProcess.Dequeue();
-  }
-  // debug
-  public static void WalkTree(Node? node)
-  {
-    if (node == null)
-    {
-      return;
-    }
-
-    Console.WriteLine($"Value: {node.Value} Frequency: {node.Frequency}");
-
-    WalkTree(node.LeftNode);
-    WalkTree(node.RightNode);
   }
 }

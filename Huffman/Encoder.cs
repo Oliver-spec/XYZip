@@ -107,6 +107,7 @@ public class Encoder
 
       List<char> readingFrame = [];
       int byteReadAsInt = 0;
+      long bytesCompressed = 0;
 
       while (true)
       {
@@ -130,6 +131,8 @@ public class Encoder
           // del first 8 bits
           readingFrame.RemoveRange(0, 8);
         }
+
+        Console.Write($"\rBytes compressed: {++bytesCompressed}               ");
       }
 
       while (true)

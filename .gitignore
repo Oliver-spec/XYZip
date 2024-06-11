@@ -6,6 +6,8 @@
 # CUSTOMS
 *.txt
 *.xyz
+*.pdf
+*.xlsx
 
 # dotenv files
 .env
