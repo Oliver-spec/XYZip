@@ -19,61 +19,6 @@ public class Decoder
       return comparisonResult;
     }
   }
-  public void Decode(string path)
-  {
-    using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
-    {
-      for (int i = 0; i < 256; i++)
-      {
-        byte codeLength = (byte)fileToRead.ReadByte();
-
-        if (codeLength == 0)
-        {
-          continue;
-        }
-
-        CodesLengthList.Add(new Tuple<byte, int>((byte)i, codeLength));
-      }
-
-      CodesLengthList.Sort(Compare);
-      GetCodesDict();
-
-      string possibleCode = "";
-
-      for (long i = 256; i < fileToRead.Length - 2; i++)
-      {
-        string readingFrame = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
-
-        foreach (char bit in readingFrame)
-        {
-          possibleCode += bit;
-
-          if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
-          {
-            // debug
-            Console.WriteLine((char)actualValue);
-            possibleCode = "";
-          }
-        }
-      }
-
-      string secondLastByte = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
-      int lastByte = fileToRead.ReadByte();
-      string usefulBits = secondLastByte.Substring(0, lastByte);
-
-      foreach (char bit in usefulBits)
-      {
-        possibleCode += bit;
-
-        if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
-        {
-          // debug
-          Console.WriteLine((char)actualValue);
-          possibleCode = "";
-        }
-      }
-    }
-  }
   private void GetCodesDict()
   {
     for (int i = 0; i < CodesLengthList.Count; i++)
@@ -111,6 +56,60 @@ public class Decoder
     foreach (Tuple<byte, string> tuple in CodesList)
     {
       CodesDict.Add(tuple.Item2, tuple.Item1);
+    }
+  }
+  public void Decode(string path)
+  {
+    using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
+    using (FileStream fileToWrite = File.Create("decompressed.txt"))
+    {
+      for (int i = 0; i < 256; i++)
+      {
+        byte codeLength = (byte)fileToRead.ReadByte();
+
+        if (codeLength == 0)
+        {
+          continue;
+        }
+
+        CodesLengthList.Add(new Tuple<byte, int>((byte)i, codeLength));
+      }
+
+      CodesLengthList.Sort(Compare);
+      GetCodesDict();
+
+      string possibleCode = "";
+
+      for (long i = 256; i < fileToRead.Length - 2; i++)
+      {
+        string readingFrame = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
+
+        foreach (char bit in readingFrame)
+        {
+          possibleCode += bit;
+
+          if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
+          {
+            fileToWrite.WriteByte(actualValue);
+            possibleCode = "";
+          }
+        }
+      }
+
+      string secondLastByte = Convert.ToString(fileToRead.ReadByte(), 2).PadLeft(8, '0');
+      int lastByte = fileToRead.ReadByte();
+      string usefulBits = secondLastByte.Substring(0, lastByte);
+
+      foreach (char bit in usefulBits)
+      {
+        possibleCode += bit;
+
+        if (CodesDict.TryGetValue(possibleCode, out byte actualValue))
+        {
+          fileToWrite.WriteByte(actualValue);
+          possibleCode = "";
+        }
+      }
     }
   }
 }

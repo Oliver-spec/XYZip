@@ -102,53 +102,65 @@ public class Encoder
     {
       WriteHeader(fileToWrite);
 
-      long filesize = fileToRead.Length;
-      string currentByteToWrite = "";
-      string excessCode = "";
+      List<char> readingFrame = [];
+      int byteReadAsInt = 0;
 
-      while (filesize > 0)
+      while (true)
       {
-        byte byteRead = Convert.ToByte(fileToRead.ReadByte());
-        filesize--;
+        byteReadAsInt = fileToRead.ReadByte();
 
-        string code = excessCode + CanonicalCodesDict[byteRead].Item1;
-        excessCode = "";
-
-        if (currentByteToWrite.Length + code.Length <= 8)
+        if (byteReadAsInt == -1)
         {
-          currentByteToWrite += code;
-        }
-        else
-        {
-          int lengthToWrite = 8 - currentByteToWrite.Length;
-          currentByteToWrite += code.Substring(0, lengthToWrite);
-          excessCode = code.Substring(lengthToWrite);
+          break;
         }
 
-        if (currentByteToWrite.Length == 8)
-        {
-          fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite, 2));
+        byte byteRead = (byte)byteReadAsInt;
+        string code = CanonicalCodesDict[byteRead].Item1;
+        readingFrame.AddRange(code.ToCharArray());
 
-          if (filesize == 0)
+        if (readingFrame.Count >= 8)
+        {
+          // get first 8 bits and write them to file
+          string codeToWrite = new string(readingFrame.GetRange(0, 8).ToArray());
+          fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
+
+          // del first 8 bits
+          readingFrame.RemoveRange(0, 8);
+        }
+      }
+
+      while (true)
+      {
+        if (readingFrame.Count > 8)
+        {
+          // more than 8 bits left
+          // get first 8 bits and write them to file
+          string codeToWrite = new string(readingFrame.GetRange(0, 8).ToArray());
+          fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
+
+          // del first 8 bits
+          readingFrame.RemoveRange(0, 8);
+        }
+        else if (readingFrame.Count <= 8)
+        {
+          // 8 bits or less left
+          // get remaining 8 bits and write them to file
+          if (readingFrame.Count > 0)
           {
-            fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.Length));
+            string codeToWrite = new string(readingFrame.GetRange(0, readingFrame.Count).ToArray()).PadRight(8, '0');
+            fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
+            fileToWrite.WriteByte((byte)readingFrame.Count);
+            break;
           }
-
-          currentByteToWrite = "";
-        }
-        else if (filesize == 0)
-        {
-          fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.PadRight(8, '0'), 2));
-          fileToWrite.WriteByte(Convert.ToByte(currentByteToWrite.Length));
-          currentByteToWrite = "";
+          else
+          {
+            fileToWrite.WriteByte(8);
+            break;
+          }
         }
       }
 
-      if (excessCode.Length > 0)
-      {
-        fileToWrite.WriteByte(Convert.ToByte(excessCode.PadRight(8, '0'), 2));
-        fileToWrite.WriteByte(Convert.ToByte(excessCode.Length));
-      }
+      Console.WriteLine($"\nCompressed File Size: {fileToWrite.Length} Byte(s)");
     }
   }
 }
