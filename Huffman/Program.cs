@@ -45,9 +45,11 @@ public static class Program
       {
         Console.WriteLine($"Uncompressed Size: {fs.Length} Byte(s)");
 
+        ByteReader byteReader = new ByteReader(fs, 1_000_000_000);
+
         while (true)
         {
-          int byteReadAsInt = fs.ReadByte();
+          int byteReadAsInt = byteReader.GetByte();
 
           if (byteReadAsInt == -1)
           {
@@ -67,7 +69,7 @@ public static class Program
       Encoder encoder = new Encoder();
       encoder.Encode(tree.Root, "");
       encoder.CanonicalEncode();
-      encoder.GenerateCompressedFile(filePath);
+      encoder.GenerateCompressedFile(filePath, 1_000_000_000);
     }
     else
     {

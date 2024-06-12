@@ -2,36 +2,44 @@
 
 public class ByteReader
 {
-  private FileStream FileStream { get; }
-  private int BytesToRead { get; }
-  private int BytesRead { get; set; }
-  private int Index { get; set; }
-  private byte[] ByteArray { get; set; }
+  private byte[] _byteArray;
+  private FileStream Stream { get; }
+  private int BytesToRead { get; set; }
+  private int TotalBytesRead { get; set; } = 0;
+  private int Index { get; set; } = 0;
 
   public ByteReader(FileStream fileStreamToRead, int bytesToReadAtOnce)
   {
-    FileStream = fileStreamToRead;
+    Stream = fileStreamToRead;
     BytesToRead = bytesToReadAtOnce;
-    ByteArray = new byte[BytesToRead];
-    BytesRead = 0;
-    Index = 0;
+    _byteArray = new byte[BytesToRead];
   }
 
   public int GetByte()
   {
-    if (Index > ByteArray.Length - 1)
+    if (Index > _byteArray.Length - 1 || TotalBytesRead == 0)
     {
-      int bytesReadThisIteration = FileStream.Read(ByteArray, BytesRead, BytesToRead);
+      int bytesReadThisIteration = Stream.Read(_byteArray, 0, BytesToRead);
+
+      if (bytesReadThisIteration < BytesToRead)
+      {
+        BytesToRead = bytesReadThisIteration;
+      }
 
       if (bytesReadThisIteration == 0)
       {
         return -1;
       }
 
-      BytesRead += bytesReadThisIteration;
+      Array.Resize(ref _byteArray, bytesReadThisIteration);
+
+      TotalBytesRead += bytesReadThisIteration;
+      Stream.Seek(TotalBytesRead, SeekOrigin.Begin);
+
+      Index = 0;
     }
 
-    byte byteToReturn = ByteArray[Index];
+    byte byteToReturn = _byteArray[Index];
     Index++;
 
     return byteToReturn;

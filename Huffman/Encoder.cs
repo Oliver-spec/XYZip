@@ -95,7 +95,7 @@ public class Encoder
       }
     }
   }
-  public void GenerateCompressedFile(string path)
+  public void GenerateCompressedFile(string path, int bufferSize)
   {
     string fileName = path.Split('.')[0];
     string extension = path.Split('.')[1];
@@ -103,70 +103,69 @@ public class Encoder
     using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
     using (FileStream fileToWrite = File.Create($"{fileName}.{extension}.xyz"))
     {
+      ByteReader byteReader = new ByteReader(fileToRead, bufferSize);
+      ByteWriter byteWriter = new ByteWriter(fileToWrite, bufferSize);
+
       WriteHeader(fileToWrite);
 
-      List<char> readingFrame = [];
-      int byteReadAsInt = 0;
-      long bytesCompressed = 0;
+      int bytesCompressed = 256;
 
+      int byteReadAsInt = byteReader.GetByte();
+      string bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
+
+      int byteBuffer = 0;
+      int count = 7;
       while (true)
       {
-        byteReadAsInt = fileToRead.ReadByte();
+        for (int i = 0; i < bits.Length; i++)
+        {
+          int bit = (int)char.GetNumericValue(bits[i]);
+          byteBuffer |= bit << count--;
 
-        if (byteReadAsInt == -1)
+          if (count < 0)
+          {
+            // Write byte here
+            byteWriter.WriteByte((byte)byteBuffer);
+            bytesCompressed++;
+
+            byteBuffer = 0;
+            count = 7;
+          }
+        }
+
+        if (bytesCompressed % 1_000_000 == 0)
+        {
+          Console.Write($"\rCompressing... {bytesCompressed / 1_000_000} / {fileToRead.Length / 1_000_000} MB");
+        }
+
+        byteReadAsInt = byteReader.GetByte();
+
+        if (byteReadAsInt != -1)
+        {
+          bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
+        }
+        else
         {
           break;
         }
-
-        byte byteRead = (byte)byteReadAsInt;
-        string code = CanonicalCodesDict[byteRead].Item1;
-        readingFrame.AddRange(code.ToCharArray());
-
-        if (readingFrame.Count >= 8)
-        {
-          // get first 8 bits and write them to file
-          string codeToWrite = new string(readingFrame.GetRange(0, 8).ToArray());
-          fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
-
-          // del first 8 bits
-          readingFrame.RemoveRange(0, 8);
-        }
-
-        Console.Write($"\rBytes compressed: {++bytesCompressed}               ");
       }
 
-      while (true)
+      if (count < 7)
       {
-        if (readingFrame.Count > 8)
-        {
-          // more than 8 bits left
-          // get first 8 bits and write them to file
-          string codeToWrite = new string(readingFrame.GetRange(0, 8).ToArray());
-          fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
+        // Write 2nd last byte
+        byteWriter.WriteByte((byte)byteBuffer);
 
-          // del first 8 bits
-          readingFrame.RemoveRange(0, 8);
-        }
-        else if (readingFrame.Count <= 8)
-        {
-          // 8 bits or less left
-          // get remaining 8 bits and write them to file
-          if (readingFrame.Count > 0)
-          {
-            string codeToWrite = new string(readingFrame.GetRange(0, readingFrame.Count).ToArray()).PadRight(8, '0');
-            fileToWrite.WriteByte(Convert.ToByte(codeToWrite, 2));
-            fileToWrite.WriteByte((byte)readingFrame.Count);
-            break;
-          }
-          else
-          {
-            fileToWrite.WriteByte(8);
-            break;
-          }
-        }
+        // Write final byte
+        byteWriter.WriteByte((byte)(7 - count), true);
+      }
+      else
+      {
+        // Write final byte
+        byteWriter.WriteByte(8, true);
       }
 
-      Console.WriteLine($"Compressed File Size: {fileToWrite.Length} Byte(s)");
+      Console.WriteLine($"\rCompressed Size: {fileToWrite.Length} Byte(s)");
+      Console.WriteLine($"Compression Ratio: {(float)fileToWrite.Length / fileToRead.Length:P1}");
     }
   }
 }
