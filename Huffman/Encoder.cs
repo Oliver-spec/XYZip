@@ -94,6 +94,12 @@ public class Encoder
         CanonicalCodesDict.Add(tuple.Item1, new Tuple<string, int>(tuple.Item2, tuple.Item2.Length));
       }
     }
+
+    // // debug
+    // foreach (KeyValuePair<byte, Tuple<string, int>> item in CanonicalCodesDict)
+    // {
+    //   Console.WriteLine(item.Key + " " + item.Value.Item1);
+    // }
   }
   public void GenerateCompressedFile(string path, int bufferSize)
   {

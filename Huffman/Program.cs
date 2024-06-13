@@ -74,7 +74,7 @@ public static class Program
     else
     {
       Decoder decoder = new Decoder();
-      decoder.Decode(filePath ?? throw new Exception("Invalid File Path"));
+      decoder.Decode(filePath ?? throw new Exception("Invalid File Path"), 1_000_000_000);
     }
   }
 }
