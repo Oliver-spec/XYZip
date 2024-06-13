@@ -67,7 +67,7 @@ public static class Program
       tree.GrowTree(queue);
 
       Encoder encoder = new Encoder();
-      encoder.Encode(tree.Root, "");
+      encoder.Encode(tree.Root);
       encoder.CanonicalEncode();
       encoder.GenerateCompressedFile(filePath, 1_000_000_000);
     }

@@ -2,11 +2,11 @@
 
 public class Decoder
 {
-  private List<(byte, int)> CodesLengthList { get; } = []; // (Value, Length)
-  private List<(byte, (int, int))> CodesList { get; } = []; // (Value, (Code, Length))
-  private Dictionary<(int, int), byte> CodesDict { get; } = []; // ((Code, Length), Value)
+  private List<(int, int)> CodesLengthList { get; } = []; // (Value, Length)
+  private List<(int, (int, int))> CodesList { get; } = []; // (Value, (Code, Length))
+  private Dictionary<CodeKey, int> CodesDict { get; } = []; // ((Code, Length), Value)
 
-  private int Compare((byte, int) x, (byte, int) y)
+  private int Compare((int, int) x, (int, int) y)
   {
     int comparisonResult = x.Item2.CompareTo(y.Item2);
 
@@ -25,7 +25,7 @@ public class Decoder
     {
       if (i == 0)
       {
-        (byte, (int, int)) tuple = (CodesLengthList[i].Item1, (0, CodesLengthList[i].Item2));
+        (int, (int, int)) tuple = (CodesLengthList[i].Item1, (0, CodesLengthList[i].Item2));
         CodesList.Add(tuple);
       }
       else
@@ -45,14 +45,14 @@ public class Decoder
           code = (previousCode + 1) << (currentLength - previousLength);
         }
 
-        (byte, (int, int)) tuple = (CodesLengthList[i].Item1, (code, CodesLengthList[i].Item2));
+        (int, (int, int)) tuple = (CodesLengthList[i].Item1, (code, CodesLengthList[i].Item2));
         CodesList.Add(tuple);
       }
     }
 
-    foreach ((byte, (int, int)) tuple in CodesList)
+    foreach ((int, (int, int)) tuple in CodesList)
     {
-      CodesDict.Add(tuple.Item2, tuple.Item1);
+      CodesDict.Add(new CodeKey(tuple.Item2), tuple.Item1);
     }
   }
   public void Decode(string path, int bufferSize)
@@ -78,46 +78,43 @@ public class Decoder
           continue;
         }
 
-        CodesLengthList.Add(((byte)i, length));
+        CodesLengthList.Add((i, length));
       }
 
       CodesLengthList.Sort(Compare);
       GetCodesDict();
-
-      // // debug
-      // foreach (KeyValuePair<(int, int), byte> item in CodesDict)
-      // {
-      //   Console.WriteLine(item.Key.Item1 + " " + item.Key.Item2 + " " + item.Value);
-      // }
 
       long bytesDecompressed = 256;
 
       // Read body but stop before 2nd last byte
       int codeLength = 0;
       int codeBuffer = 0;
+      int byteGet = 0;
+      int minimumLength = CodesLengthList[0].Item2;
+
       for (long i = 256; i < fileToRead.Length - 2; i++)
       {
-        int byteGet = byteReader.GetByte();
+        byteGet = byteReader.GetByte();
+        CodeKey key;
         for (int j = 8; j > 0; j--)
         {
           codeBuffer |= BitGetter.GetBit(byteGet, j);
           codeLength++;
-          (int, int) keyTuple = (codeBuffer, codeLength);
 
-          // // debug
-          // Console.WriteLine(keyTuple.Item1 + " " + keyTuple.Item2);
+          if (codeLength >= minimumLength)
+          {
+            key = new CodeKey(codeBuffer, codeLength);
 
-          if (CodesDict.TryGetValue(keyTuple, out byte value))
-          {
-            byteWriter.WriteByte(value);
-            codeBuffer = 0;
-            codeLength = 0;
-            bytesDecompressed++;
+            if (CodesDict.TryGetValue(key, out int value))
+            {
+              byteWriter.WriteByte(value);
+              codeBuffer = 0;
+              codeLength = 0;
+              bytesDecompressed++;
+            }
           }
-          else
-          {
-            codeBuffer <<= 1;
-          }
+
+          codeBuffer <<= 1;
         }
 
         if (bytesDecompressed % 1_000_000 == 0)
@@ -129,34 +126,34 @@ public class Decoder
       // Read the last 2 bytes
       int secondLastByte = byteReader.GetByte();
       int lastByte = byteReader.GetByte();
+      CodeKey lastTwoKeys;
       for (int i = 8; i > 8 - lastByte; i--)
       {
         codeBuffer |= BitGetter.GetBit(secondLastByte, i);
         codeLength++;
-        (int, int) keyTuple = (codeBuffer, codeLength);
 
-        // // debug
-        // Console.WriteLine(keyTuple.Item1 + " " + keyTuple.Item2);
-
-        if (CodesDict.TryGetValue(keyTuple, out byte value))
+        if (codeLength >= minimumLength)
         {
-          if (i == 8 - lastByte + 1)
-          {
-            byteWriter.WriteByte(value, true);
-          }
-          else
-          {
-            byteWriter.WriteByte(value);
-          }
+          lastTwoKeys = new CodeKey(codeBuffer, codeLength);
 
-          codeBuffer = 0;
-          codeLength = 0;
-          bytesDecompressed++;
+          if (CodesDict.TryGetValue(lastTwoKeys, out int value))
+          {
+            if (i == 8 - lastByte + 1)
+            {
+              byteWriter.WriteByte(value, true);
+            }
+            else
+            {
+              byteWriter.WriteByte(value);
+            }
+
+            codeBuffer = 0;
+            codeLength = 0;
+            bytesDecompressed++;
+          }
         }
-        else
-        {
-          codeBuffer <<= 1;
-        }
+
+        codeBuffer <<= 1;
       }
 
       Console.WriteLine($"\rDecompressed Size: {fileToWrite.Length} Byte(s)");

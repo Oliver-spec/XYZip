@@ -13,9 +13,9 @@ public class ByteWriter
     _byteList = [];
   }
 
-  public void WriteByte(byte byteToWrite, bool isFinalByte = false)
+  public void WriteByte(int byteToWrite, bool isFinalByte = false)
   {
-    _byteList.Add(byteToWrite);
+    _byteList.Add((byte)byteToWrite);
 
     if (_byteList.Count == _bufferSize)
     {

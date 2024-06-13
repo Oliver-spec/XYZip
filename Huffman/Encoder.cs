@@ -2,13 +2,13 @@
 
 public class Encoder
 {
-  private List<Tuple<byte, string>> Codes { get; } = [];
-  private List<Tuple<byte, string>> CanonicalCodes { get; } = [];
-  private Dictionary<byte, Tuple<string, int>> CanonicalCodesDict { get; } = [];
+  private List<(int, (int, int))> Codes { get; } = []; // (Value, (Code, Length))
+  private List<(int, (int, int))> CanonicalCodes { get; } = []; // (Value, (Code, Length))
+  private Dictionary<int, (int, int)> CanonicalCodesDict { get; } = []; // (Value, (Code, Length))
 
-  private int Compare(Tuple<byte, string> x, Tuple<byte, string> y)
+  private int Compare((int, (int, int)) x, (int, (int, int)) y)
   {
-    int comparisonResult = x.Item2.Length.CompareTo(y.Item2.Length);
+    int comparisonResult = x.Item2.Item2.CompareTo(y.Item2.Item2);
 
     if (comparisonResult == 0)
     {
@@ -23,7 +23,7 @@ public class Encoder
   {
     for (int i = 0; i < 256; i++)
     {
-      if (CanonicalCodesDict.TryGetValue((byte)i, out Tuple<string, int>? tuple))
+      if (CanonicalCodesDict.TryGetValue(i, out (int, int) tuple))
       {
         fileToWrite.WriteByte((byte)tuple.Item2);
       }
@@ -33,7 +33,7 @@ public class Encoder
       }
     }
   }
-  public void Encode(Node? currentNode, string code)
+  public void Encode(Node? currentNode, int code = 0, int length = 0)
   {
     if (currentNode == null)
     {
@@ -42,19 +42,23 @@ public class Encoder
 
     if (currentNode.IsLeafNode())
     {
-      Codes.Add(new Tuple<byte, string>(currentNode.Value, code));
+      Codes.Add((currentNode.Value, (code, length)));
       return;
     }
 
-    Encode(currentNode.LeftNode, code + "0");
-    Encode(currentNode.RightNode, code + "1");
+    int leftCode = code << 1;
+    int rightCode = (code << 1) | 1;
+    int codeLength = length + 1;
+
+    Encode(currentNode.LeftNode, leftCode, codeLength);
+    Encode(currentNode.RightNode, rightCode, codeLength);
   }
   public void CanonicalEncode()
   {
     if (Codes.Count == 1)
     {
-      CanonicalCodes.Add(new Tuple<byte, string>(Codes[0].Item1, "0"));
-      CanonicalCodesDict.Add(Codes[0].Item1, new Tuple<string, int>("0", 1));
+      CanonicalCodes.Add((Codes[0].Item1, (0, 1)));
+      CanonicalCodesDict.Add(Codes[0].Item1, (0, 1));
       return;
     }
 
@@ -64,42 +68,44 @@ public class Encoder
     {
       if (i == 0)
       {
-        Tuple<byte, string> tuple = new(Codes[i].Item1, new string('0', Codes[i].Item2.Length));
+        (int, (int, int)) tuple = (Codes[i].Item1, (0, Codes[i].Item2.Item2));
         CanonicalCodes.Add(tuple);
-        CanonicalCodesDict.Add(tuple.Item1, new Tuple<string, int>(tuple.Item2, tuple.Item2.Length));
+        CanonicalCodesDict.Add(tuple.Item1, (tuple.Item2.Item1, tuple.Item2.Item2));
       }
       else
       {
-        string newCode = "";
+        int code;
 
-        string previouscode = CanonicalCodes[i - 1].Item2;
-        string currentCode = Codes[i].Item2;
+        int previouscode = CanonicalCodes[i - 1].Item2.Item1;
+        int currentCode = Codes[i].Item2.Item1;
 
-        int previousLength = CanonicalCodes[i - 1].Item2.Length;
-        int currentLength = Codes[i].Item2.Length;
+        int previousLength = CanonicalCodes[i - 1].Item2.Item2;
+        int currentLength = Codes[i].Item2.Item2;
 
         if (currentLength == previousLength)
         {
-          int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
-          newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(currentLength, '0');
+          // int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
+          // newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(currentLength, '0');
+          code = previouscode + 1;
         }
         else
         {
-          int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
-          newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(previousLength, '0').PadRight(currentLength, '0');
+          // int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
+          // newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(previousLength, '0').PadRight(currentLength, '0');
+          code = (previouscode + 1) << (currentLength - previousLength);
         }
 
-        Tuple<byte, string> tuple = new(Codes[i].Item1, newCode);
+        (int, (int, int)) tuple = (Codes[i].Item1, (code, currentLength));
         CanonicalCodes.Add(tuple);
-        CanonicalCodesDict.Add(tuple.Item1, new Tuple<string, int>(tuple.Item2, tuple.Item2.Length));
+        CanonicalCodesDict.Add(tuple.Item1, (code, currentLength));
       }
     }
 
-    // // debug
-    // foreach (KeyValuePair<byte, Tuple<string, int>> item in CanonicalCodesDict)
-    // {
-    //   Console.WriteLine(item.Key + " " + item.Value.Item1);
-    // }
+    // debug
+    foreach (KeyValuePair<int, (int, int)> item in CanonicalCodesDict)
+    {
+      Console.WriteLine(item.Key + " " + item.Value.Item1 + " " + item.Value.Item2);
+    }
   }
   public void GenerateCompressedFile(string path, int bufferSize)
   {
@@ -116,16 +122,24 @@ public class Encoder
 
       int bytesCompressed = 256;
 
-      int byteReadAsInt = byteReader.GetByte();
-      string bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
+      // int byteReadAsInt = byteReader.GetByte();
+      // string bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
 
+
+      int byteRead = byteReader.GetByte();
+
+      (int, int) bitTuple = CanonicalCodesDict[byteRead]; // (Code, Length)
+      int bits = bitTuple.Item1;
+      int bitsLength = bitTuple.Item2;
+
+      int bit = 0;
       int byteBuffer = 0;
       int count = 7;
       while (true)
       {
-        for (int i = 0; i < bits.Length; i++)
+        for (int i = bitsLength; i > 0; i--)
         {
-          int bit = (int)char.GetNumericValue(bits[i]);
+          bit = BitGetter.GetBit(bits, i);
           byteBuffer |= bit << count--;
 
           if (count < 0)
@@ -144,11 +158,13 @@ public class Encoder
           Console.Write($"\rCompressing... {bytesCompressed / 1_000_000} / {fileToRead.Length / 1_000_000} MB");
         }
 
-        byteReadAsInt = byteReader.GetByte();
+        byteRead = byteReader.GetByte();
 
-        if (byteReadAsInt != -1)
+        if (byteRead != -1)
         {
-          bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
+          bitTuple = CanonicalCodesDict[byteRead];
+          bits = bitTuple.Item1;
+          bitsLength = bitTuple.Item2;
         }
         else
         {

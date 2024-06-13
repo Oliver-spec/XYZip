@@ -3,11 +3,11 @@
 public class Node
 {
   public int Frequency { get; }
-  public byte Value { get; }
+  public int Value { get; }
   public Node? LeftNode { get; }
   public Node? RightNode { get; }
 
-  public Node(Node? leftNode, Node? rightNode, byte value, int frequency)
+  public Node(Node? leftNode, Node? rightNode, int value, int frequency)
   {
     Value = value;
     Frequency = frequency;
