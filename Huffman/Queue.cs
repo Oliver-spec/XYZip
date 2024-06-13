@@ -2,31 +2,25 @@
 
 public class Queue : PriorityQueue<Node, int>
 {
-  private byte ByteToAdd { get; set; } = 0;
-  private Dictionary<byte, int> FrequencyDict { get; } = [];
+  private Dictionary<int, int> FrequencyDict { get; } = [];
 
-  private void PopulateFrequencyDict()
+  public void PopulateFrequencyDict(int byteToAdd)
   {
-    if (FrequencyDict.TryGetValue(ByteToAdd, out int value))
+    if (FrequencyDict.TryGetValue(byteToAdd, out int value))
     {
-      FrequencyDict[ByteToAdd] = ++value;
+      FrequencyDict[byteToAdd] = ++value;
     }
     else
     {
-      FrequencyDict[ByteToAdd] = 1;
+      FrequencyDict[byteToAdd] = 1;
     }
   }
   public void FinaliseQueue()
   {
-    foreach (KeyValuePair<byte, int> entry in FrequencyDict)
+    foreach (KeyValuePair<int, int> entry in FrequencyDict)
     {
       Node node = new(null, null, entry.Key, entry.Value);
       Enqueue(node, entry.Value);
     }
-  }
-  public void CountFrequency(byte byteToAdd)
-  {
-    ByteToAdd = byteToAdd;
-    PopulateFrequencyDict();
   }
 }

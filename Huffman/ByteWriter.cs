@@ -20,6 +20,7 @@ public class ByteWriter
     if (_byteList.Count == _bufferSize)
     {
       _stream.Write(_byteList.ToArray(), 0, _bufferSize);
+      _byteList.Clear();
     }
     else if (isFinalByte)
     {

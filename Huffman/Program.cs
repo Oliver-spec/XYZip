@@ -43,22 +43,31 @@ public static class Program
 
       using (FileStream fs = new FileStream(filePath ?? throw new Exception("Invalid File Path"), FileMode.Open, FileAccess.Read))
       {
-        Console.WriteLine($"Uncompressed Size: {fs.Length} Byte(s)");
+        Console.WriteLine($"Uncompressed Size: {(float)fs.Length / 1_000_000:F1} MB");
 
         ByteReader byteReader = new ByteReader(fs, 1_000_000_000);
-
+        int byteRead = 0;
+        long byteProcessed = 0;
         while (true)
         {
-          int byteReadAsInt = byteReader.GetByte();
+          byteRead = byteReader.GetByte();
 
-          if (byteReadAsInt == -1)
+          if (byteProcessed % 100_000 == 0 || byteRead == -1)
+          {
+            Console.Write($"\rPreparing to Compress... {(float)byteProcessed / 1_000_000:F1} / {(float)fs.Length / 1_000_000:F1} MB");
+          }
+
+          if (byteRead == -1)
           {
             break;
           }
 
-          byte byteRead = (byte)byteReadAsInt;
-          queue.CountFrequency(byteRead);
+          queue.PopulateFrequencyDict(byteRead);
+
+          byteProcessed++;
         }
+
+        Console.WriteLine();
       }
 
       queue.FinaliseQueue();
@@ -69,12 +78,12 @@ public static class Program
       Encoder encoder = new Encoder();
       encoder.Encode(tree.Root);
       encoder.CanonicalEncode();
-      encoder.GenerateCompressedFile(filePath, 1_000_000_000);
+      encoder.GenerateCompressedFile(filePath, 1_048_576);
     }
     else
     {
       Decoder decoder = new Decoder();
-      decoder.Decode(filePath ?? throw new Exception("Invalid File Path"), 1_000_000_000);
+      decoder.Decode(filePath ?? throw new Exception("Invalid File Path"), 1_048_576);
     }
   }
 }

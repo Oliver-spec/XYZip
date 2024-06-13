@@ -19,17 +19,17 @@ public class Encoder
       return comparisonResult;
     }
   }
-  private void WriteHeader(FileStream fileToWrite)
+  private void WriteHeader(ByteWriter writer)
   {
     for (int i = 0; i < 256; i++)
     {
       if (CanonicalCodesDict.TryGetValue(i, out (int, int) tuple))
       {
-        fileToWrite.WriteByte((byte)tuple.Item2);
+        writer.WriteByte((byte)tuple.Item2);
       }
       else
       {
-        fileToWrite.WriteByte(0);
+        writer.WriteByte(0);
       }
     }
   }
@@ -84,14 +84,10 @@ public class Encoder
 
         if (currentLength == previousLength)
         {
-          // int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
-          // newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(currentLength, '0');
           code = previouscode + 1;
         }
         else
         {
-          // int currentCodeBase10 = Convert.ToInt32(previouscode, 2) + 1;
-          // newCode = Convert.ToString(currentCodeBase10, 2).PadLeft(previousLength, '0').PadRight(currentLength, '0');
           code = (previouscode + 1) << (currentLength - previousLength);
         }
 
@@ -99,12 +95,6 @@ public class Encoder
         CanonicalCodes.Add(tuple);
         CanonicalCodesDict.Add(tuple.Item1, (code, currentLength));
       }
-    }
-
-    // debug
-    foreach (KeyValuePair<int, (int, int)> item in CanonicalCodesDict)
-    {
-      Console.WriteLine(item.Key + " " + item.Value.Item1 + " " + item.Value.Item2);
     }
   }
   public void GenerateCompressedFile(string path, int bufferSize)
@@ -118,13 +108,9 @@ public class Encoder
       ByteReader byteReader = new ByteReader(fileToRead, bufferSize);
       ByteWriter byteWriter = new ByteWriter(fileToWrite, bufferSize);
 
-      WriteHeader(fileToWrite);
+      WriteHeader(byteWriter);
 
-      int bytesCompressed = 256;
-
-      // int byteReadAsInt = byteReader.GetByte();
-      // string bits = CanonicalCodesDict[(byte)byteReadAsInt].Item1;
-
+      long bytesCompressed = 256;
 
       int byteRead = byteReader.GetByte();
 
@@ -137,6 +123,11 @@ public class Encoder
       int count = 7;
       while (true)
       {
+        if (bytesCompressed % 100_000 == 0)
+        {
+          Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+        }
+
         for (int i = bitsLength; i > 0; i--)
         {
           bit = BitGetter.GetBit(bits, i);
@@ -151,11 +142,6 @@ public class Encoder
             byteBuffer = 0;
             count = 7;
           }
-        }
-
-        if (bytesCompressed % 1_000_000 == 0)
-        {
-          Console.Write($"\rCompressing... {bytesCompressed / 1_000_000} / {fileToRead.Length / 1_000_000} MB");
         }
 
         byteRead = byteReader.GetByte();
@@ -179,14 +165,21 @@ public class Encoder
 
         // Write final byte
         byteWriter.WriteByte((byte)(7 - count), true);
+
+        bytesCompressed += 2;
+        Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
       }
       else
       {
         // Write final byte
         byteWriter.WriteByte(8, true);
+
+        bytesCompressed++;
+        Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
       }
 
-      Console.WriteLine($"\rCompressed Size: {fileToWrite.Length} Byte(s)");
+      Console.WriteLine();
+      Console.WriteLine($"Compressed Size: {(float)fileToWrite.Length / 1_000_000:F1} MB");
       Console.WriteLine($"Compression Ratio: {(float)fileToWrite.Length / fileToRead.Length:P1}");
     }
   }

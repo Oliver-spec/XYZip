@@ -66,7 +66,7 @@ public class Decoder
       ByteReader byteReader = new ByteReader(fileToRead, bufferSize);
       ByteWriter byteWriter = new ByteWriter(fileToWrite, bufferSize);
 
-      Console.WriteLine($"\rCompressed Size: {fileToRead.Length} Byte(s)");
+      Console.WriteLine($"\rCompressed Size: {(float)fileToRead.Length / 1_000_000:F1} MB");
 
       // Read header
       for (int i = 0; i < 256; i++)
@@ -94,6 +94,11 @@ public class Decoder
 
       for (long i = 256; i < fileToRead.Length - 2; i++)
       {
+        if (bytesDecompressed % 100_000 == 0)
+        {
+          Console.Write($"\rDecompressing... {(float)bytesDecompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+        }
+
         byteGet = byteReader.GetByte();
         CodeKey key;
         for (int j = 8; j > 0; j--)
@@ -115,11 +120,6 @@ public class Decoder
           }
 
           codeBuffer <<= 1;
-        }
-
-        if (bytesDecompressed % 1_000_000 == 0)
-        {
-          Console.Write($"\rDecompressing... {bytesDecompressed / 1_000_000} / {fileToRead.Length / 1_000_000} MB");
         }
       }
 
@@ -156,7 +156,9 @@ public class Decoder
         codeBuffer <<= 1;
       }
 
-      Console.WriteLine($"\rDecompressed Size: {fileToWrite.Length} Byte(s)");
+      Console.Write($"\rDecompressing... {(float)bytesDecompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+      Console.WriteLine();
+      Console.WriteLine($"Decompressed Size: {(float)fileToWrite.Length / 1_000_000:F1} MB");
     }
   }
 }
