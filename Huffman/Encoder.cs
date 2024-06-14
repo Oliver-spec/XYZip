@@ -99,12 +99,32 @@ public class Encoder
   }
   public void GenerateCompressedFile(string path, int bufferSize)
   {
-    string fileName = path.Split('.')[0];
-    string extension = path.Split('.')[1];
+    string originalFileName = Path.GetFileName(path);
+    string compressedFileName = originalFileName + ".xyz";
 
     using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
-    using (FileStream fileToWrite = File.Create($"{fileName}.{extension}.xyz"))
+    using (FileStream fileToWrite = File.Create(compressedFileName))
     {
+      long fileSize = fileToRead.Length;
+      int dividedBy;
+      string unit;
+
+      if (fileSize < 1000)
+      {
+        dividedBy = 1;
+        unit = "Bytes";
+      }
+      else if (fileSize < 1_000_000)
+      {
+        dividedBy = 1000;
+        unit = "KB";
+      }
+      else
+      {
+        dividedBy = 1_000_000;
+        unit = "MB";
+      }
+
       ByteReader byteReader = new ByteReader(fileToRead, bufferSize);
       ByteWriter byteWriter = new ByteWriter(fileToWrite, bufferSize);
 
@@ -125,7 +145,7 @@ public class Encoder
       {
         if (bytesCompressed % 100_000 == 0)
         {
-          Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+          Console.Write($"\rCompressing... {(float)bytesCompressed / dividedBy:F1} / {(float)fileToRead.Length / dividedBy:F1} {unit}");
         }
 
         for (int i = bitsLength; i > 0; i--)
@@ -167,7 +187,7 @@ public class Encoder
         byteWriter.WriteByte((byte)(7 - count), true);
 
         bytesCompressed += 2;
-        Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+        Console.Write($"\rCompressing... {(float)bytesCompressed / dividedBy:F1} / {(float)fileToRead.Length / dividedBy:F1} {unit}");
       }
       else
       {
@@ -175,11 +195,11 @@ public class Encoder
         byteWriter.WriteByte(8, true);
 
         bytesCompressed++;
-        Console.Write($"\rCompressing... {(float)bytesCompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+        Console.Write($"\rCompressing... {(float)bytesCompressed / dividedBy:F1} / {(float)fileToRead.Length / dividedBy:F1} {unit}");
       }
 
       Console.WriteLine();
-      Console.WriteLine($"Compressed Size: {(float)fileToWrite.Length / 1_000_000:F1} MB");
+      Console.WriteLine($"Compressed Size: {(float)fileToWrite.Length / dividedBy:F1} {unit}");
       Console.WriteLine($"Compression Ratio: {(float)fileToWrite.Length / fileToRead.Length:P1}");
     }
   }

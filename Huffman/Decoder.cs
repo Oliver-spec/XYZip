@@ -57,16 +57,36 @@ public class Decoder
   }
   public void Decode(string path, int bufferSize)
   {
-    string fileName = path.Split('.')[0];
-    string extension = path.Split('.')[1];
+    string oldFileName = Path.GetFileName(path);
+    string newFileName = "decompressed_" + oldFileName.Remove(oldFileName.Length - 4);
 
     using (FileStream fileToRead = new FileStream(path, FileMode.Open, FileAccess.Read))
-    using (FileStream fileToWrite = File.Create($"{fileName}_decompressed.{extension}"))
+    using (FileStream fileToWrite = File.Create(newFileName))
     {
+      long fileSize = fileToRead.Length;
+      int dividedBy;
+      string unit;
+
+      if (fileSize < 1000)
+      {
+        dividedBy = 1;
+        unit = "Bytes";
+      }
+      else if (fileSize < 1_000_000)
+      {
+        dividedBy = 1000;
+        unit = "KB";
+      }
+      else
+      {
+        dividedBy = 1_000_000;
+        unit = "MB";
+      }
+
       ByteReader byteReader = new ByteReader(fileToRead, bufferSize);
       ByteWriter byteWriter = new ByteWriter(fileToWrite, bufferSize);
 
-      Console.WriteLine($"\rCompressed Size: {(float)fileToRead.Length / 1_000_000:F1} MB");
+      Console.WriteLine($"\rCompressed Size: {(float)fileToRead.Length / dividedBy:F1} {unit}");
 
       // Read header
       for (int i = 0; i < 256; i++)
@@ -96,7 +116,7 @@ public class Decoder
       {
         if (bytesDecompressed % 100_000 == 0)
         {
-          Console.Write($"\rDecompressing... {(float)bytesDecompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+          Console.Write($"\rDecompressing... {(float)bytesDecompressed / dividedBy:F1} / {(float)fileToRead.Length / dividedBy:F1} {unit}");
         }
 
         byteGet = byteReader.GetByte();
@@ -156,9 +176,9 @@ public class Decoder
         codeBuffer <<= 1;
       }
 
-      Console.Write($"\rDecompressing... {(float)bytesDecompressed / 1_000_000:F1} / {(float)fileToRead.Length / 1_000_000:F1} MB");
+      Console.Write($"\rDecompressing... {(float)bytesDecompressed / dividedBy:F1} / {(float)fileToRead.Length / dividedBy:F1} {unit}");
       Console.WriteLine();
-      Console.WriteLine($"Decompressed Size: {(float)fileToWrite.Length / 1_000_000:F1} MB");
+      Console.WriteLine($"Decompressed Size: {(float)fileToWrite.Length / dividedBy:F1} {unit}");
     }
   }
 }
